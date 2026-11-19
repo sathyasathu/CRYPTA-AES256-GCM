@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101828"><title>CRYPTA | AES-256-GCM Security Workbench</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body><div class="shell">
+<aside class="sidebar">
+  <div class="brand"><div class="brand-mark">C</div><div><b>CRYPTA</b><small>SECURITY WORKBENCH</small></div></div>
+  <div class="nav-caption">WORKSPACE</div>
+  <button class="nav active" data-tab="text">▤ <span>Text</span></button>
+  <button class="nav" data-tab="files">▧ <span>File</span></button>
+  <button class="nav" data-tab="folder">▣ <span>Folder</span></button>
+  <div class="side-bottom"><i></i><div><b>Local lab mode</b><small>Docker container active</small></div></div>
+</aside>
+<main>
+<header><div><div class="eyebrow">ACTIVITY 02 / CRYPTOGRAPHY LAB</div><h1>AES Security Workbench</h1><p>Encrypt, decrypt and verify data using authenticated encryption.</p></div><div class="algo"><b>◇ AES-256-GCM</b><small>Authenticated encryption</small></div></header>
+{% if error %}<div class="alert"><b>Operation not completed</b><span>{{ error }}</span></div>{% endif %}
+<div class="notice"><b>✓ &nbsp; Private by design for this lab</b><span>Files are processed in memory. Use sample data only and do not expose this classroom application to the public internet.</span></div>
+
+<section class="workspace" id="tab-text">
+<div class="heading"><div><small>01 — TEXT MODE</small><h2>Text encryption</h2><p>Protect messages and recover them with the same passphrase.</p></div><label>TEXT</label></div>
+<div class="columns">
+<form class="panel" method="post" action="/api/text/encrypt">
+<h3><em>A</em> Encrypt message</h3><label>Message</label><textarea name="text" rows="5" placeholder="Enter text to encrypt…" required>{{ text_value or '' }}</textarea>
+<label>Passphrase</label><div class="keyrow"><input id="text-pass" name="passphrase" type="password" placeholder="Enter a strong passphrase" required><button type="button" class="mini" onclick="generate('text-pass')">Generate</button></div>
+<button class="primary">Encrypt message →</button>
+{% if text_result %}<div class="result"><b>ENCRYPTED PAYLOAD</b><button type="button" class="copy" onclick="copyText('cipher-result')">Copy</button><textarea id="cipher-result" rows="5" readonly>{{ text_result }}</textarea><small>Keep the complete payload and passphrase safe.</small></div>{% endif %}
+</form>
+<form class="panel" method="post" action="/api/text/decrypt">
+<h3><em class="purple">B</em> Decrypt message</h3><label>Encrypted payload</label><textarea name="payload" rows="5" placeholder="Paste the AESTEXT1 payload…" required>{{ payload_value or '' }}</textarea>
+<label>Passphrase</label><input name="passphrase" type="password" placeholder="Enter original passphrase" required>
+<button class="secondary">Decrypt message →</button>
+{% if decrypted_text is defined and decrypted_text is not none %}<div class="result good"><b>RECOVERED PLAINTEXT</b><button type="button" class="copy" onclick="copyText('plain-result')">Copy</button><textarea id="plain-result" rows="5" readonly>{{ decrypted_text }}</textarea><small>✓ Authentication successful</small></div>{% endif %}
+</form></div></section>
+
+<section class="workspace" id="tab-files" hidden>
+<div class="heading"><div><small>02 — FILE MODE</small><h2>File encryption</h2><p>Encrypt actual file bytes and download a new .aes file.</p></div><label>FILES</label></div>
+<div class="columns">
+<form class="panel" method="post" action="/api/file/encrypt" enctype="multipart/form-data"><h3><em>A</em> Encrypt a file</h3><label>Select file</label><input class="file" type="file" name="file" required><label>Passphrase</label><div class="keyrow"><input id="file-pass" name="passphrase" type="password" placeholder="Strong passphrase" required><button type="button" class="mini" onclick="generate('file-pass')">Generate</button></div><button class="primary">Encrypt & download ↓</button><small>Maximum individual file size: 50 MiB.</small></form>
+<form class="panel" method="post" action="/api/file/decrypt" enctype="multipart/form-data"><h3><em class="purple">B</em> Decrypt a file</h3><label>Select encrypted .aes file</label><input class="file" type="file" name="file" required><label>Passphrase</label><input name="passphrase" type="password" placeholder="Original passphrase" required><button class="secondary">Decrypt & download ↓</button><small>Authentication is verified before plaintext is returned.</small></form>
+</div></section>
+
+<section class="workspace" id="tab-folder" hidden>
+<div class="heading"><div><small>03 — FOLDER MODE</small><h2>Folder encryption</h2><p>Protect multiple files while retaining their relative directory structure.</p></div><label>FOLDER</label></div>
+<div class="columns">
+<form class="panel" method="post" action="/api/folder/encrypt" enctype="multipart/form-data"><h3><em>A</em> Encrypt a folder</h3><label>Select folder</label><input class="file" type="file" name="files" webkitdirectory directory multiple required><label>Passphrase</label><div class="keyrow"><input id="folder-pass" name="passphrase" type="password" placeholder="Strong passphrase" required><button type="button" class="mini" onclick="generate('folder-pass')">Generate</button></div><button class="primary">Encrypt folder ↓</button><small>Downloads a ZIP containing individually authenticated .aes files.</small></form>
+<form class="panel" method="post" action="/api/folder/decrypt" enctype="multipart/form-data"><h3><em class="purple">B</em> Decrypt a folder</h3><label>Select encrypted folder ZIP</label><input class="file" type="file" name="file" accept=".zip" required><label>Passphrase</label><input name="passphrase" type="password" placeholder="Original passphrase" required><button class="secondary">Decrypt folder ↓</button><small>Downloads a ZIP with the restored folder structure.</small></form>
+</div></section>
+
+<section class="under"><small>UNDER THE HOOD</small><h2>Cryptographic workflow</h2><div class="steps"><article><b>01</b><h3>Key derivation</h3><p>PBKDF2-HMAC-SHA256 derives a 256-bit key from the passphrase using a random salt.</p></article><article><b>02</b><h3>Fresh randomness</h3><p>A new 16-byte salt and 12-byte nonce are generated for every encryption.</p></article><article><b>03</b><h3>Authenticated encryption</h3><p>AES-GCM produces ciphertext and a 16-byte authentication tag to detect tampering.</p></article></div></section>
+<footer><b>CRYPTA · ACTIVITY 02</b><span>Educational prototype · Docker deployment</span></footer>
+</main></div>
+<script>
+const navs=[...document.querySelectorAll('.nav')];
+function activate(name){document.querySelectorAll('.workspace').forEach(x=>x.hidden=x.id!=='tab-'+name);navs.forEach(x=>x.classList.toggle('active',x.dataset.tab===name));}
+navs.forEach(x=>x.addEventListener('click',()=>activate(x.dataset.tab)));
+{% if active_tab %}activate({{ active_tab|tojson }});{% endif %}
+async function generate(id){const r=await fetch('/api/key/generate',{method:'POST'});const d=await r.json();document.getElementById(id).value=d.passphrase;document.getElementById(id).type='text';}
+async function copyText(id){const el=document.getElementById(id);await navigator.clipboard.writeText(el.value);}
+</script></body></html>
